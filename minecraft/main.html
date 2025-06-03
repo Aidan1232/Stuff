@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>QuickLauncher</title>
+    <link rel="icon" type="image/x-icon" href="/Stuff/main/icon.png">
+    <style>
+      body {
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        flex-direction: column;
+      }
+
+      h1 {
+        font-size: 3em;
+        margin-bottom: 20px;
+      }
+
+      .btn {
+        padding: 15px 30px;
+        font-size: 18px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      }
+
+      .btn:hover {
+        background-color: #45a049;
+        transform: scale(1.05);
+      }
+
+      a {
+        color: #46bef9;
+      }
+    </style>
+  </head>
+  <body>
+    <div style="position:fixed;top:1px;left:1px;color:white;font-size:15px;">
+      GitHub page running this website >> <a href="https://github.com/Aidan1232/main/tree/main">Github page</a> <<
+    </div>
+    <div style="position:fixed;top:1px;color:white;font-size:15px;">
+      Version 2.3
+    </div>
+    <div style="position:fixed;top:1px;right:1px;color:darkgray;font-size:12px;">
+      <button onclick="window.location.href='/Stuff/minecraft/changes.html'">
+        Change Logs
+      </button>
+    </div>
+    <h1>QuickLauncher</h1>
+    <p>Current collected Minecraft versions created by <a href="https://eaglercraft.com">eaglercraft.com</a></p>
+    <button class="btn" onclick="window.location.href='/Stuff/minecraft/1.12.2/ms/1.12.2/1.12.2.html'">
+      Launch Minecraft 1.12.2 (Hotspot REQUIRED for downloading textures/etc)
+    </button>
+    <br>
+    <button class="btn" onclick="window.location.href='/Stuff/minecraft/1.8.8/1.8.8.html'">
+      Launch Minecraft 1.8.8 (Works with any wifi)
+    </button>
+    <br>
+    <button class="btn" onclick="window.location.href='/Stuff/minecraft/1.5.2/1.5.2.html'">
+      Launch Minecraft 1.5.2 (Works with any wifi)
+    </button>
+  </body>
+  <button class="btn" onclick="window.location.href='/Stuff/index.html'">Back to the main page</button>
+  <div style="position:fixed;bottom:1px;color:darkgray;font-size:12px;">
+    <p>
+      This Website is not affiliated with Mojang/Microsoft/Eaglercraft nor was it made by Mojang/Microsoft/Eaglercraft. 
+      This was made for fun and not for any way of income. 
+      (DONT SUE ME MOJANG/MICROSOFT/EAGLERCRAFT TEAM PLEASE)
+    </p>
+  </div>
+</html>
