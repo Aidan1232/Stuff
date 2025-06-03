@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Snake Game</title>
+  <style>
+    body { text-align: center; background-color: #111; color: white; font-family: Arial, sans-serif; }
+    canvas { background: #000; display: none; margin: 20px auto; }
+    #overlay, #game-over {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #222;
+      padding: 30px;
+      border-radius: 10px;
+      display: none;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      background: limegreen;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <p id="live-score" style="font-size: 20px; display: none;">Score: 0</p>
+  <div id="overlay">
+    <h1>Snake Game</h1>
+    <button onclick="startGame()">Play</button>
+  </div>
+
+  <canvas id="game" width="300" height="250"></canvas>
+
+  <div id="game-over">
+    <h2>Game Over</h2>
+    <p id="final-score"></p>
+    <button onclick="startGame()">Play Again</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    const overlay = document.getElementById('overlay');
+    const gameOverScreen = document.getElementById('game-over');
+    const finalScore = document.getElementById('final-score');
+    let rippleStart = null;
+    let rippleDuration = 600; // total ripple time in ms
+    let rippleSegments = [];
+    let snake = [];
+    let dx = 20, dy = 0;
+    let food;
+    let score = 0;
+    let interval;
+    let running = false;
+    let frameCount = 0;
+
+    function startGame() {
+      overlay.style.display = 'none';
+      canvas.style.display = 'block';
+      document.getElementById('live-score').style.display = 'block';
+      document.getElementById('live-score').textContent = 'Score: 0';
+      document.getElementById('game-over').style.display = 'none';
+      snake = [{x: 200, y: 200}];
+      gameOver = false;
+      dx = 20; dy = 0;
+      score = 0;
+      running = true;
+      placeFood();
+      loop();
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw snake body
+      snake.forEach((part, index) => {
+        let isHead = index === 0;
+        ctx.save();
+        if (rippleStart && rippleSegments[index]) {
+            let elapsed = Date.now() - rippleStart - rippleSegments[index].delay;
+            if (elapsed > 0 && elapsed < rippleDuration) {
+                const scale = 1 + 0.3 * Math.sin((elapsed / rippleDuration) * Math.PI);
+                ctx.translate(part.x + 10, part.y + 10);
+                ctx.scale(scale, scale);
+                ctx.translate(-part.x - 10, -part.y - 10);
+            }
+        }
+        ctx.fillStyle = (index === 0) ? 'lime' : 'green';  // Head is lime, body is green
+        ctx.fillRect(part.x, part.y, 20, 20);
+        ctx.restore();
+      });
+
+      // Draw food
+      ctx.fillStyle = 'red';
+      ctx.fillRect(food.x, food.y, 20, 20);
+
+      const distX = Math.abs(snake[0].x - food.x);
+      const distY = Math.abs(snake[0].y - food.y);
+      const head = snake[0];
+      const distToFood = Math.hypot(food.x - head.x, food.y - head.y);
+      const openMouth =  distToFood <= 40;
+
+      // Draw face on snake's head (first part of the snake)
+      drawFace(snake[0], openMouth);
+    }
+
+    function drawFace(head, openMouth) {
+        const headX = head.x + 10;
+        const headY = head.y + 10;
+        const eyeDistanceFromCenter = 6;
+        const eyeRadius = 4;
+        const irisRadius = 2;
+        const irisOffset = 2;
+
+        let directionX = dx / 20;
+        let directionY = dy / 20;
+        if (directionX === 0 && directionY === 0) directionX = 1;
+
+        const perpX = -directionY;
+        const perpY = directionX;
+
+        const leftEyeX = headX + perpX * eyeDistanceFromCenter;
+        const leftEyeY = headY + perpY * eyeDistanceFromCenter;
+        const rightEyeX = headX - perpX * eyeDistanceFromCenter;
+        const rightEyeY = headY - perpY * eyeDistanceFromCenter;
+
+        ctx.fillStyle = "white";
+        ctx.beginPath(); ctx.arc(leftEyeX, leftEyeY, eyeRadius, 0, Math.PI * 2); ctx.fill();
+        ctx.beginPath(); ctx.arc(rightEyeX, rightEyeY, eyeRadius, 0, Math.PI * 2); ctx.fill();
+
+        const angleToFood = Math.atan2(food.y + 10 - headY, food.x + 10 - headX);
+        const leftIrisX = leftEyeX + Math.cos(angleToFood) * irisOffset;
+        const leftIrisY = leftEyeY + Math.sin(angleToFood) * irisOffset;
+        const rightIrisX = rightEyeX + Math.cos(angleToFood) * irisOffset;
+        const rightIrisY = rightEyeY + Math.sin(angleToFood) * irisOffset;
+
+        const irisAnimation = Math.sin(Date.now() / 300) * 1.5;
+        ctx.fillStyle = "black";
+        ctx.beginPath(); 
+        ctx.arc(leftIrisX + irisAnimation, leftIrisY, irisRadius, 0, Math.PI * 2); 
+        ctx.fill();
+        ctx.beginPath(); 
+        ctx.arc(rightIrisX + irisAnimation, rightIrisY, irisRadius, 0, Math.PI * 2); 
+        ctx.fill();
+
+        const mouthOffset = 10;
+        const mouthX = headX + directionX * 8;
+        const mouthY = headY + directionY * 8;
+        ctx.fillStyle = openMouth ? "pink" : "None";
+        ctx.beginPath();
+        ctx.arc(mouthX, mouthY, openMouth ? 5 : 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        if (!openMouth) {
+            if (Math.floor(frameCount / 5) % 2 === 0) {
+                const tongueLength = 10 + 5 * Math.sin(Date.now() / 100);
+                ctx.strokeStyle = "pink";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(mouthX, mouthY);
+                ctx.lineTo(mouthX + directionX * tongueLength, mouthY + directionY * tongueLength);
+                ctx.stroke();
+            }
+        }
+    }
+        
+    function move() {
+      const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+      snake.unshift(head);
+      if (head.x === food.x && head.y === food.y) {
+        score++;
+        document.getElementById('live-score').textContent = 'Score: ' + score;
+        placeFood();
+        rippleStart = Date.now();
+        rippleSegments = snake.map((_, i) => ({
+            delay: i * 60 
+        }));
+      } else {
+        snake.pop();
+      }
+    }
+
+    function placeFood() {
+      food = {
+        x: Math.floor(Math.random() * 20) * 20,
+        y: Math.floor(Math.random() * 20) * 20
+      };
+    }
+
+    function checkCollision() {
+      const head = snake[0];
+      // wall collision
+      if (head.x < 0 || head.x >= 400 || head.y < 0 || head.y >= 400) return true;
+      // self collision
+      for (let i = 1; i < snake.length; i++) {
+        if (snake[i].x === head.x && snake[i].y === head.y) return true;
+      }
+      return false;
+    }
+
+    function loop() {
+      if (!running) return;
+      frameCount++;
+      move();
+      if (checkCollision()) {
+        endGame();
+        return;
+      }
+      draw();
+      setTimeout(loop, 100);
+    }
+
+    function endGame() {
+      running = false;
+      canvas.style.display = 'none';
+      finalScore.textContent = `Score: ${score}`;
+      gameOverScreen.style.display = 'block';
+      document.getElementById('live-score').style.display = 'none';
+    }
+
+    document.addEventListener('keydown', e => {
+        if ((e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') && dy === 0) {
+            dx = 0; dy = -20;
+        }
+        if ((e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') && dy === 0) {
+            dx = 0; dy = 20;
+        }
+        if ((e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') && dx === 0) {
+            dx = -20; dy = 0;
+        }
+        if ((e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') && dx === 0) {
+            dx = 20; dy = 0;
+        }
+        if ((e.key === ' ' || event.keyCode === 32) && running === false || gameOver === true){
+            startGame()
+        }
+    });
+
+    overlay.style.display = 'block';
+  </script>
+</body>
+</html>
