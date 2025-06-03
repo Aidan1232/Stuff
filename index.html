@@ -3,13 +3,38 @@
     <style>
       body{
         background-color: aqua;
+        margin: 0;
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #1e3c72, #2a5298);
+        color: white;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        flex-direction: column;
+      }
+      .btn {
+        padding: 15px 30px;
+        font-size: 18px;
+        background-color: #4CAF50;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: background-color 0.3s ease, transform 0.2s ease;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+      }
+
+      .btn:hover {
+        background-color: #45a049;
+        transform: scale(1.05);
       }
     </style>
   </head>  
   <body>
     <h2>Main linking website</h2>
     <div>
-      <button onclick="window.location.href='/Stuff/tetris.html'">To Tetris</button>
+      <button class="btn" onclick="window.location.href='/Stuff/tetris.html'">To Tetris</button>
     </div>
   </body>
 </html>
