@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Gravity Sandbox</title>
+  <style>
+    body { margin: 0; background: #000; overflow: hidden; color: white; font-family: sans-serif; }
+    canvas { display: block; }
+    #controls {
+      position: fixed;
+      top: 10px; left: 10px;
+      background: rgba(0,0,0,0.5);
+      padding: 10px;
+      border-radius: 8px;
+    }
+    button { margin: 5px; }
+  </style>
+</head>
+<body>
+<div id="controls">
+  <button onclick="togglePause()">⏯ Pause/Play</button>
+  <button onclick="particles = []">🧼 Clear</button>
+</div>
+<canvas id="canvas"></canvas>
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const G = 0.1; // gravitational constant
+let particles = [];
+let paused = false;
+
+class Particle {
+  constructor(x, y, mass) {
+    this.x = x;
+    this.y = y;
+    this.mass = mass;
+    this.radius = Math.cbrt(mass) * 2;
+    this.vx = (Math.random() - 0.5) * 2;
+    this.vy = (Math.random() - 0.5) * 2;
+    this.color = `hsl(${Math.random()*360}, 100%, 70%)`;
+  }
+
+  update() {
+    for (let other of particles) {
+      if (other === this) continue;
+      let dx = other.x - this.x;
+      let dy = other.y - this.y;
+      let distSq = dx*dx + dy*dy;
+      let dist = Math.sqrt(distSq);
+      if (dist < 2) continue;
+
+      let force = G * this.mass * other.mass / distSq;
+      let ax = force * dx / dist / this.mass;
+      let ay = force * dy / dist / this.mass;
+
+      this.vx += ax;
+      this.vy += ay;
+    }
+    this.x += this.vx;
+    this.y += this.vy;
+  }
+
+  draw() {
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fillStyle = this.color;
+    ctx.fill();
+  }
+}
+
+function animate() {
+  if (!paused) {
+    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    for (let p of particles) {
+      p.update();
+      p.draw();
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
+canvas.addEventListener("mousedown", e => {
+  const mass = Math.random() * 30 + 10;
+  particles.push(new Particle(e.clientX, e.clientY, mass));
+});
+
+function togglePause() {
+  paused = !paused;
+}
+
+animate();
+</script>
+</body>
+</html>
