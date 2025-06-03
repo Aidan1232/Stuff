@@ -1,98 +1,312 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Gravity Sandbox</title>
-  <style>
-    body { margin: 0; background: #000; overflow: hidden; color: white; font-family: sans-serif; }
-    canvas { display: block; }
-    #controls {
-      position: fixed;
-      top: 10px; left: 10px;
-      background: rgba(0,0,0,0.5);
-      padding: 10px;
-      border-radius: 8px;
-    }
-    button { margin: 5px; }
-  </style>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Sand Sandbox with TNT and Fire Fixes</title>
+<style>
+  body {
+    margin: 0;
+    overflow: hidden;
+    background: #111;
+    color: #eee;
+    font-family: monospace;
+  }
+  #toolbar {
+    position: fixed;
+    top: 5px;
+    left: 5px;
+    background: #222;
+    padding: 8px;
+    border-radius: 5px;
+    user-select: none;
+    z-index: 10;
+  }
+  #toolbar button {
+    margin: 2px;
+    padding: 5px 8px;
+    background: #333;
+    border: none;
+    color: #eee;
+    cursor: pointer;
+    font-weight: bold;
+    border-radius: 3px;
+  }
+  #toolbar button.selected {
+    background: #ff8800;
+  }
+  canvas {
+    display: block;
+  }
+</style>
 </head>
 <body>
-<div id="controls">
-  <button onclick="togglePause()">⏯ Pause/Play</button>
-  <button onclick="particles = []">🧼 Clear</button>
+
+<div id="toolbar">
+  <button onclick="selectType('SAND')">Sand</button>
+  <button onclick="selectType('WATER')">Water</button>
+  <button onclick="selectType('FIRE')">Fire</button>
+  <button onclick="selectType('WALL')">Wall</button>
+  <button onclick="selectType('SEED')">Seed</button>
+  <button onclick="selectType('ICE')">Ice</button>
+  <button onclick="selectType('EXPLODE')">Explode</button>
+  <button onclick="selectType('ACID')">Acid</button>
+  <button onclick="selectType('TNT')">TNT</button>
+  <button onclick="clearGrid()">Clear</button>
 </div>
+
 <canvas id="canvas"></canvas>
+
 <script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-const G = 0.1; // gravitational constant
-let particles = [];
-let paused = false;
+let CELL_SIZE = 6;
+let W, H;
 
-class Particle {
-  constructor(x, y, mass) {
-    this.x = x;
-    this.y = y;
-    this.mass = mass;
-    this.radius = Math.cbrt(mass) * 2;
-    this.vx = (Math.random() - 0.5) * 2;
-    this.vy = (Math.random() - 0.5) * 2;
-    this.color = `hsl(${Math.random()*360}, 100%, 70%)`;
-  }
-
-  update() {
-    for (let other of particles) {
-      if (other === this) continue;
-      let dx = other.x - this.x;
-      let dy = other.y - this.y;
-      let distSq = dx*dx + dy*dy;
-      let dist = Math.sqrt(distSq);
-      if (dist < 2) continue;
-
-      let force = G * this.mass * other.mass / distSq;
-      let ax = force * dx / dist / this.mass;
-      let ay = force * dy / dist / this.mass;
-
-      this.vx += ax;
-      this.vy += ay;
-    }
-    this.x += this.vx;
-    this.y += this.vy;
-  }
-
-  draw() {
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.fillStyle = this.color;
-    ctx.fill();
-  }
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  W = Math.floor(canvas.width / CELL_SIZE);
+  H = Math.floor(canvas.height / CELL_SIZE);
 }
+resize();
 
-function animate() {
-  if (!paused) {
-    ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    for (let p of particles) {
-      p.update();
-      p.draw();
-    }
-  }
-  requestAnimationFrame(animate);
-}
-
-canvas.addEventListener("mousedown", e => {
-  const mass = Math.random() * 30 + 10;
-  particles.push(new Particle(e.clientX, e.clientY, mass));
+window.addEventListener('resize', () => {
+  resize();
+  initGrid();
 });
 
-function togglePause() {
-  paused = !paused;
+const ParticleTypes = {
+  SAND: { type: 'SAND', color: '#d2b48c', solid: false },
+  WATER: { type: 'WATER', color: '#3399ff', solid: false },
+  FIRE: { type: 'FIRE', color: '#ff5500', solid: false, life: 20, hot: true, fire: true },
+  WALL: { type: 'WALL', color: '#555555', solid: true },
+  SEED: { type: 'SEED', color: '#228B22', solid: false },
+  ICE: { type: 'ICE', color: '#a0d8ef', solid: false },
+  EXPLODE: { type: 'EXPLODE', color: '#ff0000', solid: false },
+  ACID: { type: 'ACID', color: '#00ff00', solid: false },
+  TNT: { type: 'TNT', color: '#ff6600', solid: true, timer: 30 },
+};
+
+let grid;
+
+function initGrid() {
+  grid = Array.from({ length: H }, () => Array(W).fill(null));
+}
+initGrid();
+
+let currentType = 'SAND';
+
+function selectType(type) {
+  currentType = type;
+  document.querySelectorAll('#toolbar button').forEach(btn => {
+    btn.classList.toggle('selected', btn.textContent === type || (type === 'TNT' && btn.textContent === 'TNT'));
+  });
+}
+selectType(currentType);
+
+let mouseDown = false;
+canvas.addEventListener('mousedown', () => mouseDown = true);
+canvas.addEventListener('mouseup', () => mouseDown = false);
+canvas.addEventListener('mouseleave', () => mouseDown = false);
+
+canvas.addEventListener('mousemove', e => {
+  if (!mouseDown) return;
+  const x = Math.floor(e.clientX / CELL_SIZE);
+  const y = Math.floor(e.clientY / CELL_SIZE);
+  if (x >= 0 && x < W && y >= 0 && y < H) {
+    grid[y][x] = { ...ParticleTypes[currentType] };
+  }
+});
+
+function clearGrid() {
+  initGrid();
 }
 
-animate();
+function update() {
+  // Process from bottom to top for falling particles
+  for (let y = H - 1; y >= 0; y--) {
+    for (let x = 0; x < W; x++) {
+      const p = grid[y][x];
+      if (!p) continue;
+
+      // Skip solid walls for movement (except TNT, EXPLODE)
+      if (p.solid && p.type !== 'TNT' && p.type !== 'EXPLODE') continue;
+
+      if (p.type === 'SAND') {
+        if (y + 1 < H && !grid[y + 1][x]) {
+          grid[y + 1][x] = p;
+          grid[y][x] = null;
+        } else {
+          // try slide diagonally
+          if (x > 0 && y + 1 < H && !grid[y + 1][x - 1]) {
+            grid[y + 1][x - 1] = p;
+            grid[y][x] = null;
+          } else if (x + 1 < W && y + 1 < H && !grid[y + 1][x + 1]) {
+            grid[y + 1][x + 1] = p;
+            grid[y][x] = null;
+          }
+        }
+      } else if (p.type === 'WATER') {
+        // Falls down
+        if (y + 1 < H && !grid[y + 1][x]) {
+          grid[y + 1][x] = p;
+          grid[y][x] = null;
+        } else {
+          // flows sideways randomly
+          let dir = Math.random() < 0.5 ? -1 : 1;
+          if (x + dir >= 0 && x + dir < W && !grid[y][x + dir]) {
+            grid[y][x + dir] = p;
+            grid[y][x] = null;
+          }
+        }
+      } else if (p.type === 'FIRE') {
+        p.life--;
+        if (p.life <= 0) {
+          grid[y][x] = null;
+          continue;
+        }
+        // Extinguish fire if water is nearby
+        let nearWater = false;
+        for (let dx = -1; dx <= 1 && !nearWater; dx++) {
+          for (let dy = -1; dy <= 1 && !nearWater; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            const nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+              let np = grid[ny][nx];
+              if (np && np.type === 'WATER') {
+                nearWater = true;
+              }
+            }
+          }
+        }
+        if (nearWater) {
+          grid[y][x] = null;
+          continue;
+        }
+        // Spread fire randomly
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            let nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+              let np = grid[ny][nx];
+              if (!np && Math.random() < 0.03) {
+                grid[ny][nx] = { ...ParticleTypes.FIRE, life: ParticleTypes.FIRE.life };
+              }
+            }
+          }
+        }
+      } else if (p.type === 'SEED') {
+        if (Math.random() < 0.001) {
+          grid[y][x] = { ...ParticleTypes.WALL };
+        }
+      } else if (p.type === 'ICE') {
+        let nearHeat = false;
+        for (let dx = -1; dx <= 1 && !nearHeat; dx++) {
+          for (let dy = -1; dy <= 1 && !nearHeat; dy++) {
+            const n = grid[y + dy]?.[x + dx];
+            if (n?.hot || n?.fire) nearHeat = true;
+          }
+        }
+        if (nearHeat) {
+          grid[y][x] = { ...ParticleTypes.WATER };
+        }
+      } else if (p.type === 'EXPLODE') {
+        if (!p.timer) p.timer = 10;
+        p.timer--;
+        if (p.timer <= 0) {
+          for (let dx = -2; dx <= 2; dx++) {
+            for (let dy = -2; dy <= 2; dy++) {
+              if (Math.abs(dx) + Math.abs(dy) <= 2) {
+                let nx = x + dx, ny = y + dy;
+                if (ny >= 0 && ny < H && nx >= 0 && nx < W) {
+                  grid[ny][nx] = { ...ParticleTypes.FIRE, life: ParticleTypes.FIRE.life };
+                }
+              }
+            }
+          }
+          grid[y][x] = null;
+        }
+      } else if (p.type === 'ACID') {
+        for (let dx = -1; dx <= 1; dx++) {
+          for (let dy = -1; dy <= 1; dy++) {
+            const nx = x + dx, ny = y + dy;
+            const n = grid[ny]?.[nx];
+            if (n && !n.solid && n.type !== 'ACID' && Math.random() < 0.05) {
+              grid[ny][nx] = null;
+            }
+          }
+        }
+      } else if (p.type === 'TNT') {
+        if (!p.timer) p.timer = 30; // start countdown
+        p.timer--;
+
+        // Check for neighboring fire to ignite TNT immediately
+        let onFire = false;
+        for (let dx = -1; dx <= 1 && !onFire; dx++) {
+          for (let dy = -1; dy <= 1 && !onFire; dy++) {
+            if (dx === 0 && dy === 0) continue;
+            let nx = x + dx, ny = y + dy;
+            if (nx >= 0 && nx < W && ny >= 0 && ny < H) {
+              let np = grid[ny][nx];
+              if (np && np.type === 'FIRE') {
+                onFire = true;
+              }
+            }
+          }
+        }
+        if (onFire) p.timer = 0; // ignite now
+
+        if (p.timer <= 0) {
+          // Explosion radius — blast fire and clear cells around
+          for (let dx = -3; dx <= 3; dx++) {
+            for (let dy = -3; dy <= 3; dy++) {
+              let nx = x + dx, ny = y + dy;
+              if (ny >= 0 && ny < H && nx >= 0 && nx < W) {
+                if (Math.abs(dx) + Math.abs(dy) <= 3) {
+                  if (Math.random() < 0.6) {
+                    grid[ny][nx] = { ...ParticleTypes.FIRE, life: ParticleTypes.FIRE.life + 5 + Math.floor(Math.random() * 10) };
+                  } else {
+                    grid[ny][nx] = null;
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  for (let y = 0; y < H; y++) {
+    for (let x = 0; x < W; x++) {
+      const p = grid[y][x];
+      if (p) {
+        ctx.fillStyle = p.color;
+        if (p.type === 'FIRE') {
+          // Flicker fire color
+          let flicker = 50 + Math.random() * 100;
+          ctx.fillStyle = `rgb(${Math.min(255, flicker + 200)}, ${Math.min(120, flicker)}, 0)`;
+        }
+        ctx.fillRect(x * CELL_SIZE, y * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+      }
+    }
+  }
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+
+loop();
 </script>
+
 </body>
 </html>
