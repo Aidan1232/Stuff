@@ -65,6 +65,10 @@
     <button class="btn" onclick="window.location.href='/Stuff/cc/index.html'">To Cookie clicker game</button>
   </body>
   <script>
+    const outputDiv = document.getElementById("output");
+    const br = document.createElement("br");
+    outputDiv.appendChild(br);
+    
     document.addEventListener("DOMContentLoaded", function() {
       const buttons = document.querySelectorAll("button");
       const outputDiv = document.getElementById("output");
