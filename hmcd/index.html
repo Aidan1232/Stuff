@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Dino Dash</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    canvas { background: #f2f2f2; display: block; margin: auto; }
+    #overlay {
+      position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(0,0,0,0.6); color: white; font-size: 2em;
+      cursor: pointer; font-family: sans-serif; text-align: center;
+      white-space: pre-line;
+    }
+  </style>
+</head>
+<body>
+<div id="overlay">Tap to Play</div>
+<canvas id="game" width="600" height="200"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const overlay = document.getElementById("overlay");
+
+const GROUND_Y = 170;
+let isRunning = false;
+let obstacles = [];
+let playerY = GROUND_Y - 20, velocityY = 0, gravity = 1.5;
+let jumping = false;
+let baseSpeed = 8;
+let speed = baseSpeed;
+let score = 0, highScore = localStorage.getItem("highScore") || 0;
+let startTime = 0;
+let obstacleCooldown = 0;
+let trail = [];
+
+overlay.addEventListener("click", startGame);
+
+function startGame() {
+  isRunning = true;
+  obstacles = [];
+  trail = [];
+  velocityY = 0;
+  playerY = GROUND_Y - 20;
+  startTime = performance.now();
+  overlay.style.display = "none";
+  requestAnimationFrame(gameLoop);
+}
+
+function endGame() {
+  isRunning = false;
+  if (score > highScore) {
+    highScore = score;
+    localStorage.setItem("highScore", highScore);
+  }
+  overlay.innerText = `Game Over!\n\nScore: ${score}\n\nHigh Score: ${highScore}\n\nTap to Replay`;
+  overlay.style.display = "flex";
+}
+
+function gameLoop() {
+  if (!isRunning) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Update score & speed
+  score = Math.floor((performance.now() - startTime) / 100);
+  speed = baseSpeed + (score / 200);
+
+  // Trail logic
+  trail.push({ x: 50, y: playerY });
+  const maxTrail = Math.max(5, Math.floor(10 + speed * 1.5));
+  while (trail.length > maxTrail) trail.shift();
+
+  // Draw trail (before player)
+  for (let i = 0; i < trail.length; i++) {
+    const t = trail[i];
+    const trailX = 50 - (trail.length - i) * 2;
+    const alpha = (i + 1) / trail.length;
+    ctx.fillStyle = `rgba(0,0,0,${alpha})`;
+    ctx.fillRect(trailX, t.y, 20, 20);
+  }
+
+  // Draw player
+  ctx.fillStyle = "black";
+  ctx.fillRect(50, playerY, 20, 20);
+
+  // Apply gravity
+  if (jumping) {
+    velocityY = -14;
+    jumping = false;
+  }
+  playerY += velocityY;
+  velocityY += gravity;
+  if (playerY > GROUND_Y - 20) {
+    playerY = GROUND_Y - 20;
+    velocityY = 0;
+  }
+
+  // Obstacle spawn
+  if (obstacleCooldown <= 0) {
+    const width = 10 + Math.random() * 15;
+    obstacles.push({ x: canvas.width, width: width });
+
+   // Random spacing between spawns
+   obstacleCooldown = Math.floor(Math.random() * (40 - 5 + 1)) + 100;
+   } else {
+    obstacleCooldown--;
+  }
+
+
+
+  // Move and draw obstacles
+  ctx.fillStyle = "darkred";
+  for (let i = obstacles.length - 1; i >= 0; i--) {
+    let obs = obstacles[i];
+    obs.x -= speed;
+    ctx.fillRect(obs.x, GROUND_Y, obs.width, -20);
+
+    // Collision check
+    const dinoTop = playerY;
+    const dinoBottom = playerY + 20;
+    const dinoLeft = 50;
+    const dinoRight = dinoLeft + 20;
+
+    const obsLeft = obs.x;
+    const obsRight = obsLeft + obs.width;
+    const obsTop = GROUND_Y - 20;
+    const obsBottom = GROUND_Y;
+
+    const isCollision =
+      dinoRight > obsLeft &&
+      dinoLeft < obsRight &&
+      dinoBottom > obsTop &&
+      dinoTop < obsBottom;
+
+    if (isCollision) {
+      endGame();
+      return;
+    }
+
+    if (obsRight < 0) obstacles.splice(i, 1);
+  }
+
+  // Score UI
+  ctx.fillStyle = "black";
+  ctx.font = "16px sans-serif";
+  ctx.fillText(`Score: ${score}`, 10, 20);
+  ctx.fillText(`Highscore: ${highScore}`, 10, 40);
+  ctx.fillText(`Speed: ${Math.round(speed)}`, 500, 20);
+
+  requestAnimationFrame(gameLoop);
+}
+
+// Controls
+["keydown", "mousedown", "touchstart"].forEach(event => {
+  document.addEventListener(event, () => {
+    if (playerY >= GROUND_Y - 20) jumping = true;
+  });
+});
+</script>
+</body>
+</html>
