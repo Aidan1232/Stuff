@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Retro Solitaire</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="game">
+      <div class="top-row">
+        <div class="left-group">
+          <div class="pile" id="stock"></div>
+          <div class="pile" id="waste"></div>
+        </div>
+        <div class="right-group">
+          <div class="pile foundation" id="foundation0"><span>♠</span></div>
+          <div class="pile foundation" id="foundation1"><span>♥</span></div>
+          <div class="pile foundation" id="foundation2"><span>♣</span></div>
+          <div class="pile foundation" id="foundation3"><span>♦</span></div>
+        </div>
+      </div>
+
+      <div class="tableau" id="tableau">
+        <!-- Tableau piles will be injected here by JS -->
+      </div>
+    </div>
+    <button id="reset" aria-label="Reset Game">🔄 New Game</button>
+    <div id="solvability" style="margin-top: 10px; font-size: 1rem;"></div>
+    <audio id="flip-sound" src="/Stuff/s/sounds/card.mp3" preload="auto"></audio>
+    <audio id="flip-sound1" src="/Stuff/s/sounds/mcf.mp3" preload="auto"></audio>
+    <audio id="win-sound" src="/Stuff/s/sounds/victory.mp3" preload="auto"></audio>
+
+    <script src="script.js"></script>
+  </body>
+</html>
